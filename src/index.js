@@ -39,6 +39,7 @@ class FixtureFactory extends EventEmitter {
     let args = model.args || [];
     let options = model.options ? cloneDeep(model.options) : void 0;
     let nextMethod;
+    let lastObject = null;
 
     if (options) {
       console.warn('Passing arguments to faker using the "options" property has been deprecated.');
@@ -49,6 +50,7 @@ class FixtureFactory extends EventEmitter {
     while (callStack.length) {
       nextMethod = callStack.shift();
       if (nestedFakerMethod[nextMethod]) {
+        lastObject = nestedFakerMethod;
         nestedFakerMethod = nestedFakerMethod[nextMethod];
       } else {
         isMethod = false;
@@ -56,7 +58,7 @@ class FixtureFactory extends EventEmitter {
       }
     }
 
-    return isMethod ? nestedFakerMethod(...args) : model.method;
+    return isMethod ? nestedFakerMethod.apply(lastObject, args) : model.method;
   }
 
   _generateField(name, method, fixture, dataModel, generatedFixtures) {
