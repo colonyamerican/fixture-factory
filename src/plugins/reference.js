@@ -1,9 +1,10 @@
-import {extend, isString} from 'lodash';
+import {isArray, extend, isString} from 'lodash';
 
 export default class ReferencePlugin {
 
   constructor(fixtureFactory) {
     this.fixtureFactory = fixtureFactory;
+    this.fixtureFactoryWillGenerateField = this.fixtureFactoryWillGenerateField.bind(this);
     this.enable();
   }
 
@@ -31,18 +32,20 @@ export default class ReferencePlugin {
 
   //api
 
-  fixtureFactoryWillGenerateField = event => {
+  fixtureFactoryWillGenerateField(event) {
     let {model} = event;
-    var isRef = isString(model.method) && model.method.indexOf('model') === 0;
-    var split;
 
-    if (isRef) {
-      split = model.method.split('.');
-      if (split[0] === 'model') {
-        model = this._transform(model, split);
-      }
+    if (isString(model.method) && model.method.indexOf('model.') === 0) {
+      model = this._transform(model, model.method.split('.'));
+    } else if (isArray(model.method)) {
+      model.method[0] = this.fixtureFactoryWillGenerateField({
+        model: {
+          method: model.method[0]
+        }
+      }).method;
     }
 
+    return model;
   }
 
   enable() {

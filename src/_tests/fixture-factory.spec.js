@@ -52,6 +52,10 @@ describe('Fixture Factory', function () {
       referencePlugin = new Reference(fixtureFactory);
     });
 
+    after(function() {
+      referencePlugin.disable();
+    });
+
     it('should have a enable method', function () {
       expect(referencePlugin.enable).to.be.a('function');
     });
@@ -91,12 +95,17 @@ describe('Fixture Factory', function () {
         fixtureFactory.register('referencingModel', referencingModel);
       });
 
+      after(function() {
+        fixtureFactory.plugins.reference.enable();
+      });
+
       it('should provide the ability to reference another model field', function () {
         var fixtures = fixtureFactory.generate('referencingModel', 20);
 
         expect(fixtures.length).to.equal(20);
 
         _.forEach(fixtures, function (fixture) {
+          expect(fixture.props).to.be.a('object');
           expect(fixture.name).to.be.a('string');
         });
       });
@@ -124,11 +133,10 @@ describe('Fixture Factory', function () {
         referencePlugin.disable();
         fixtureFactory.plugins.reference.disable();
         var fixture = fixtureFactory.generateOne('referencingModel');
-
         expect(fixture.name).to.equal('model.exampleModelWithFn.someField');
         expect(fixture.data).to.equal('model.exampleModel');
       });
-    });
+     });
   });
 
   describe('unit tests', function () {
@@ -194,6 +202,16 @@ describe('Fixture Factory', function () {
     });
 
     describe('getGenerator', function () {
+      var sandbox;
+
+      beforeEach(function() {
+        sandbox = sinon.sandbox.create();
+      });
+
+      afterEach(function() {
+        sandbox.restore();
+      });
+
       it('should return object with delegated generate and generateOne functions', function () {
 
         fixtureFactory.register('testModel', {});
@@ -206,12 +224,13 @@ describe('Fixture Factory', function () {
         expect(testModelGenerator.generateOne).to.be.a('function');
 
       });
+
       it('should return object that delegates to factory method using set key', function () {
         fixtureFactory.register('testModel', {});
         var testModelGenerator = fixtureFactory.getGenerator('testModel');
 
-        sinon.spy(fixtureFactory, 'generate');
-        sinon.spy(fixtureFactory, 'generateOne');
+        sandbox.spy(fixtureFactory, 'generate');
+        sandbox.spy(fixtureFactory, 'generateOne');
         testModelGenerator.generate();
         testModelGenerator.generateOne();
         expect(fixtureFactory.generate).to.have.been.calledWith('testModel');
@@ -222,8 +241,18 @@ describe('Fixture Factory', function () {
     });
 
     describe('reset', function () {
+      var sandbox;
+
+      beforeEach(function() {
+        sandbox = sinon.sandbox.create();
+      });
+
+      afterEach(function() {
+        sandbox.restore();
+      });
+
       it('should delegate to unregister', function () {
-        sinon.spy(fixtureFactory, 'unregister');
+        sandbox.spy(fixtureFactory, 'unregister');
         fixtureFactory.reset();
         expect(fixtureFactory.unregister).to.have.been.called;
       });
@@ -231,6 +260,8 @@ describe('Fixture Factory', function () {
   });
 
   describe('integration tests', function () {
+    var sandbox;
+
     beforeEach(function () {
       var dataModel = {
         someField: 'name.firstName'
@@ -251,10 +282,14 @@ describe('Fixture Factory', function () {
       fixtureFactory.register('exampleModel', dataModel);
       fixtureFactory.register('exampleModelWithFn', dataModelWithFn);
       fixtureFactory.register('referencingModel', referencingModel);
+
+      sandbox = sinon.sandbox.create();
     });
 
     afterEach(function () {
       fixtureFactory.unregister();
+
+      sandbox.restore();
     });
 
     it('should generate single fixture based on selected dataModel', function () {
@@ -307,7 +342,7 @@ describe('Fixture Factory', function () {
     });
 
     it('should delegate field generation to faker.js', function () {
-      var spy = sinon.spy(faker.name, 'firstName');
+      var spy = sandbox.spy(faker.name, 'firstName');
       fixtureFactory.generate('exampleModel', 10);
       expect(spy).to.have.callCount(10);
     });
@@ -391,6 +426,45 @@ describe('Fixture Factory', function () {
       expect(fixture.children.length).to.equal(10);
       fixture.children.should.all.have.property('firstName');
       fixture.children.should.all.have.property('lastName');
+    });
+
+    it('should generate array if passed an array', function () {
+      var fixture = fixtureFactory.generateOne({
+        children: [{
+            firstName: 'name.firstName',
+            lastName: 'name.lastName'
+          }, 1]
+      });
+
+      expect(fixture.children.length).to.equal(1);
+      fixture.children.should.all.have.property('firstName');
+      fixture.children.should.all.have.property('lastName');
+    });
+
+    it('should allow null to be passed as a value', function () {
+      var fixture = fixtureFactory.generateOne({
+        children: null
+      });
+
+      expect(fixture.children).to.equal(null);
+    });
+
+    it('Should parse references from arrays', function() {
+      fixtureFactory.register('workItem', {
+         date: 'date.past',
+         company: 'company.companyName'
+       });
+       fixtureFactory.register('user', {
+         firstName: 'name.firstName',
+         lastName: 'name.lastName',
+         work: ['model.workItem', 10]
+       });
+
+       const result = fixtureFactory.generateOne('user');
+       expect(result.work).to.exist;
+       expect(result.work.length).to.equal(10);
+       result.work.should.all.have.property('date');
+       result.work.should.all.have.property('company');
     });
 
     it('should preserve ability to generate function based fakes while using nested models',

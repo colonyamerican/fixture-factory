@@ -17,6 +17,10 @@ build:
 	make clean
 	./scripts/build.sh
 
+watch:
+	make clean
+	./scripts/watch.sh
+
 lint:
 	./scripts/lint.sh
 

@@ -1,6 +1,6 @@
 {
   "name": "fixture-factory",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Factory for faker.js fixture generator",
   "license": "MIT",
   "author": "Peter Kaleta <peter.kaleta@x-team.com> (http://peterkaleta.com)",
